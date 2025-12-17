@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Daily Bible Verse</title>
+  <style>
+    :root{
+      --card-bg: rgba(255,255,255,.85);
+      --text: #000;          /* all text black */
+      --muted: #000;         /* ref text black as requested */
+      /* category colors (rainbow-ish from red to violet) */
+      --honesty: #ef4444; --diligence: #f97316; --selfdiscipline: #facc15; --empathy: #84cc16;
+      --positivity: #10b981; --accountability: #14b8a6; --dedication: #06b6d4; --faith: #3b82f6;
+      --gratitude: #6366f1; --repentance: #8b5cf6; --seeking: #a855f7; --worship: #d946ef;
+    }
+    *, *::before, *::after { box-sizing: border-box }
+    html, body { height: 100% }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
+      color: var(--text);
+      background-image:
+        linear-gradient(180deg, rgba(255,255,255,.7), rgba(255,255,255,.9)),
+        url('clouds.png');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      padding: 32px 16px;
+    }
+    .wrap { max-width: 900px; margin: 0 auto; }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid rgba(15, 23, 42, .07);
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(15,23,42,.12);
+      padding: 24px;
+      backdrop-filter: blur(8px);
+    }
+    h1 { text-align:center; margin: 0 0 16px; font-size: clamp(22px, 5vw, 36px); }
+    .buttons { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-bottom:12px }
+    .btn { padding: 10px 14px; border: none; border-radius: 999px; cursor: pointer; font-weight:600; color:#000 }
+    /* category button backgrounds (keep colored), text black */
+    .btn.honesty{background:var(--honesty)}
+    .btn.diligence{background:var(--diligence)}
+    .btn.selfdiscipline{background:var(--selfdiscipline)}
+    .btn.empathy{background:var(--empathy)}
+    .btn.positivity{background:var(--positivity)}
+    .btn.accountability{background:var(--accountability)}
+    .btn.dedication{background:var(--dedication)}
+    .btn.faith{background:var(--faith)}
+    .btn.gratitude{background:var(--gratitude)}
+    .btn.repentance{background:var(--repentance)}
+    .btn.seeking{background:var(--seeking)}
+    .btn.worship{background:var(--worship)}
+    /* Any Category button: dark bg, white text */
+    .btn.all{background:#111827; color:#fff}
+
+    .verse { font-size: clamp(18px, 2.2vw, 22px); line-height:1.55; text-align:center; margin: 14px 0 4px }
+    .ref { text-align:center; color: var(--muted) }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Daily Bible Verse</h1>
+      <div class="buttons">
+        <button class="btn honesty" data-color="honesty">Honesty</button>
+        <button class="btn diligence" data-color="diligence">Diligence</button>
+        <button class="btn selfdiscipline" data-color="selfdiscipline">Self-Discipline</button>
+        <button class="btn empathy" data-color="empathy">Empathy</button>
+        <button class="btn positivity" data-color="positivity">Positivity</button>
+        <button class="btn accountability" data-color="accountability">Accountability</button>
+        <button class="btn dedication" data-color="dedication">Dedication</button>
+        <button class="btn faith" data-color="faith">Faith</button>
+        <button class="btn gratitude" data-color="gratitude">Gratitude</button>
+        <button class="btn repentance" data-color="repentance">Repentance</button>
+        <button class="btn seeking" data-color="seeking">Seeking</button>
+        <button class="btn worship" data-color="worship">Worship</button>
+        <button class="btn all" id="btn-all">Any Category</button>
+      </div>
+      <div class="verse" id="verse-text">Pick a category to begin.</div>
+      <div class="ref" id="verse-ref"></div>
+    </div>
+  </div>
+
+<script>
+const SAMPLE_VERSES = {
+  honesty: [ { text: "Speak the truth in love.", ref: "Ephesians 4:15" } ],
+  diligence: [ { text: "Whatever you do, work at it with all your heart.", ref: "Colossians 3:23" } ],
+  selfdiscipline: [ { text: "God gave us a spirit of self-control.", ref: "2 Timothy 1:7" } ],
+  empathy: [ { text: "Rejoice with those who rejoice; mourn with those who mourn.", ref: "Romans 12:15" } ],
+  positivity: [ { text: "Be joyful always.", ref: "1 Thessalonians 5:16" } ],
+  accountability: [ { text: "Confess your sins to one another.", ref: "James 5:16" } ],
+  dedication: [ { text: "Present your bodies as a living sacrifice.", ref: "Romans 12:1" } ],
+  faith: [ { text: "We live by faith, not by sight.", ref: "2 Corinthians 5:7" } ],
+  gratitude: [ { text: "Give thanks in all circumstances.", ref: "1 Thessalonians 5:18" } ],
+  repentance: [ { text: "Repent, for the kingdom of heaven has come near.", ref: "Matthew 4:17" } ],
+  seeking: [ { text: "Seek first the kingdom of God.", ref: "Matthew 6:33" } ],
+  worship: [ { text: "Worship the Lord in the splendor of holiness.", ref: "Psalm 29:2" } ]
+};
+
+let verses = {};
+let deck = [];
+let currentColor = '';
+
+async function loadVerses(){
+  try{
+    const res = await fetch('verses.json', { cache: 'no-store' });
+    if(res.ok){
+      const data = await res.json();
+      verses = normalize(data); return;
+    }
+  }catch(e){}
+  verses = normalize(SAMPLE_VERSES);
+}
+
+function normalize(data){
+  const keys = Object.keys(SAMPLE_VERSES);
+  const out = {};
+  for (const c of keys){
+    const arr = Array.isArray(data?.[c]) ? data[c] : [];
+    out[c] = arr.filter(v => v && typeof v.text === 'string' && v.text.trim().length);
+  }
+  return out;
+}
+
+function shuffle(arr){
+  const a = arr.slice();
+  for (let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function refillDeck(color){
+  const pool = color === 'all'
+    ? Object.keys(verses).flatMap(c=>verses[c].map(v=>({color:c, ...v})))
+    : (verses[color]||[]).map(v=>({color, ...v}));
+  deck = shuffle(pool);
+}
+
+function pick(color){
+  if (!color) return;
+  if (currentColor !== color || deck.length === 0){
+    currentColor = color;
+    refillDeck(color);
+  }
+  const card = deck.pop();
+  if(!card){
+    document.getElementById('verse-text').textContent = 'No verses found for this category.';
+    document.getElementById('verse-ref').textContent = '';
+    return;
+  }
+  document.getElementById('verse-text').textContent = card.text;
+  document.getElementById('verse-ref').textContent = card.ref ? `— ${card.ref}` : '';
+}
+
+document.querySelectorAll('[data-color]').forEach(btn => btn.addEventListener('click', e => pick(e.currentTarget.getAttribute('data-color'))));
+document.getElementById('btn-all').addEventListener('click', () => pick('all'));
+
+loadVerses();
+</script>
+</body>
+</html>
